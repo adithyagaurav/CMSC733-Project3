@@ -8,7 +8,7 @@ import EssentialMatrixFromFundamentalMatrix as em
 import ExtractCameraPose as ep
 import LinearTriangulation as lt
 import DisambiguateCameraPose as dc
-
+import LinearPnP as lpp
 
 def read_calibration():
 
@@ -207,6 +207,8 @@ def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
 
         return pts_3D_refined
 
+def get_camera_pose(pts_3d, pts_2d, K):
+    C, R = PnPRANSAC(pts_3d, pts_2d, K)
 
 def reprojection_loss(pt_3D, pt_1, pt_2, P1, P2):
 
