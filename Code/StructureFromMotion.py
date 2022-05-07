@@ -142,8 +142,7 @@ def run(input_dir, output_dir, num_images):
                 BA_error = lpp.reprojection_errorPnP(pts_3D, x, K, R_set_[k], C_set_[k])
                 print("[INFO]: Mean Reprojection Error after Bundle Adjustment {}".format(BA_error))
 
-    pts_3D_flag[pts_3D_all[:, 2] < 0] = 0
-    ut.draw_plots(pts_3D_all, pts_3D_flag, R_set_, C_set_)
+    ut.draw_plots(pts_3D_all, pts_3D_flag, R_set_, C_set_, output_dir)
 
 
 if __name__ == "__main__":

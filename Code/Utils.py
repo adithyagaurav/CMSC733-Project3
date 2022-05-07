@@ -279,14 +279,15 @@ def get_mean_reprojection_error(K, pts_3D, pts1, pts2, R1, C1, R2, C2):
 
 
 def draw_plots(pts_3d, pts_3d_flag, Rs, Cs, output_dir):
+    pts_3d_flag[pts_3d[:, 2] < 0] = 0
     feature_idx = np.where(pts_3d_flag[:, 0])
     pts_3d_val = pts_3d[feature_idx]
     x, y, z = pts_3d_val[:, 0], pts_3d_val[:, 1], pts_3d_val[:, 2]
 
     # 2D plotting
     fig = plt.figure(figsize=(10, 10))
-    plt.xlim(-250, 250)
-    plt.ylim(-100, 500)
+    plt.xlim(-25, 25)
+    plt.ylim(-10, 50)
     plt.scatter(x, z, marker='.', linewidths=0.5, color='blue')
     for i in range(0, len(Cs)):
         R1 = scipy.spatial.transform.rotation.Rotation.from_matrix(Rs[i]).as_rotvec()
@@ -301,6 +302,9 @@ def draw_plots(pts_3d, pts_3d_flag, Rs, Cs, output_dir):
 
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(projection="3d")
+    ax.set_xlim3d([-20, 20])
+    ax.set_ylim3d([-20, 20])
+    ax.set_zlim3d([-20, 20])
     ax.scatter3D(x, y, z, color='blue')
     plt.show()
     out_dir = os.path.join(output_dir, "3D_reconstruction")
