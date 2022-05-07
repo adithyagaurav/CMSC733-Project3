@@ -79,8 +79,7 @@ def get_inliers(x_features, y_features, num_images, images, output_dir):
     inlier_idx_flag = np.zeros_like(x_features)
     f_matrices = np.zeros((num_images, num_images), dtype=object)
     f_mat_obj = ir.FundamentalMatrix()
-    # for i in range(0, num_images - 1):
-    for i in range(0, 1):
+    for i in range(0, num_images - 1):
         img1 = images[i]
         h, w = img1.shape[:2]
         for j in range(i + 1, num_images):
