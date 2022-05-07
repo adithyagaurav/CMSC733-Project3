@@ -3,11 +3,10 @@ from tqdm import tqdm
 
 
 class FundamentalMatrix:
-    def __init__(self, iterations=1000, threshold=0.001, use_ransac=True):
+    def __init__(self, iterations=2000, threshold=0.001):
         self.iterations = iterations
         self.threshold = threshold
         self.epsilon = 1e-6
-        self.use_ransac = use_ransac
 
     def _get_A_matrix(self, img1_points, img2_points):
 
@@ -52,14 +51,13 @@ class FundamentalMatrix:
 
         return pts_norm, T
 
-    def _compute_RANSAC(self, img1_points_, img2_points_):
+    def get_fundamental_matrix(self, img1_points_, img2_points_, pt_pair_idx):
 
-        print('\n')
-        print("[INFO]: Computing Fundamental Matrix using RANSAC")
+        pt_pair_idx = np.array(pt_pair_idx).reshape(-1)
 
         max_inlier_count = 0
-        max_inlier_indices = None
-        best_fundamental_matrix = None
+        max_inlier_indices = []
+        max_inlier_f = None
 
         num_points = img1_points_.shape[0]
 
@@ -74,65 +72,30 @@ class FundamentalMatrix:
             img2_random_points = img2_points[indices]
 
             F = self._compute_fundamental_matrix(img1_random_points, img2_random_points)
+            F = np.matmul(T2.T, np.matmul(F, T1))
+            F /= F[2, 2]
 
-            img1_points_stacked = np.vstack((img1_points[:, 0], img1_points[:, 1], np.ones([1, num_points])))
-            img2_points_stacked = np.vstack((img2_points[:, 0], img2_points[:, 1], np.ones([1, num_points])))
+            inlier_indices = list()
+            for n in range(num_points):
+                error = get_epipolar_constraint_error(F, img1_points_[n, :], img2_points_[n, :])
+                if error < self.threshold:
+                    inlier_indices.append(pt_pair_idx[n])
 
-            F_x1 = np.matmul(F, img1_points_stacked)
-            x2_F_x1 = np.matmul(img2_points_stacked.T, F_x1)
-            abs_mul = np.abs(x2_F_x1)
-
-            diagonals = np.diagonal(abs_mul)
-
-            inlier_indices = np.where(diagonals <= self.threshold)
-
-            if len(inlier_indices[0]) > max_inlier_count:
-                max_inlier_count = len(inlier_indices[0])
+            if len(inlier_indices) > max_inlier_count:
+                max_inlier_count = len(inlier_indices)
                 max_inlier_indices = inlier_indices
-                best_fundamental_matrix = F
+                max_inlier_f = F
 
-        strong_pairs = np.array([img1_points_[max_inlier_indices], img2_points_[max_inlier_indices]])
+        best_fundamental_matrix = max_inlier_f
 
-        best_fundamental_matrix = np.matmul(T2.T, np.matmul(best_fundamental_matrix, T1))
+        return best_fundamental_matrix, max_inlier_indices
 
-        best_fundamental_matrix /= best_fundamental_matrix[2, 2]
 
-        return strong_pairs, best_fundamental_matrix
+def get_epipolar_constraint_error(fundamental_matrix, pts1, pts2):
+    pts1_homo = np.array([pts1[0], pts1[1], 1])
+    pts2_homo = np.array([pts2[0], pts2[1], 1])
 
-    def _compute_least_squares(self, img1_points_, img2_points_):
+    epipolar_constraint_error = np.dot(pts2_homo.T, np.dot(fundamental_matrix, pts1_homo))
+    epipolar_error = np.abs(epipolar_constraint_error)
 
-        print('\n')
-        print("[INFO]: Computing Fundamental Matrix using Least Squares")
-
-        img1_points, T1 = self._normalize(img1_points_)
-        img2_points, T2 = self._normalize(img2_points_)
-        num_points = img1_points_.shape[0]
-
-        f = self._compute_fundamental_matrix(img1_points, img2_points)
-
-        img1_points_stacked = np.vstack((img1_points[:, 0], img1_points[:, 1], np.ones([1, num_points])))
-        img2_points_stacked = np.vstack((img2_points[:, 0], img2_points[:, 1], np.ones([1, num_points])))
-
-        F_x1 = np.matmul(f, img1_points_stacked)
-        x2_F_x1 = np.matmul(img2_points_stacked.T, F_x1)
-        abs_mul = np.abs(x2_F_x1)
-
-        diagonals = np.diagonal(abs_mul)
-
-        inlier_indices = np.where(diagonals <= self.threshold)
-
-        strong_pairs = np.array([img1_points_[inlier_indices], img2_points_[inlier_indices]])
-
-        f = np.matmul(T2.T, np.matmul(f, T1))
-        f /= f[2, 2]
-
-        return strong_pairs, f
-
-    def get_fundamental_matrix(self, img1_points_, img2_points_):
-
-        if self.use_ransac:
-            inliers, fundamental_matrix = self._compute_RANSAC(img1_points_, img2_points_)
-        else:
-            inliers, fundamental_matrix = self._compute_least_squares(img1_points_, img2_points_)
-
-        return inliers, fundamental_matrix
+    return epipolar_error

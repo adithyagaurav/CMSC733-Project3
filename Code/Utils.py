@@ -8,7 +8,7 @@ import EssentialMatrixFromFundamentalMatrix as em
 import ExtractCameraPose as ep
 import LinearTriangulation as lt
 import DisambiguateCameraPose as dc
-import LinearPnP as lpp
+
 
 def read_calibration():
 
@@ -35,89 +35,92 @@ def get_matching_features(data_dir, num_images):
     for i in range(1, num_images):
         match_file_path = os.path.join(data_dir, "matching" + str(i) + ".txt")
         match_file_data = open(match_file_path, "r")
-        feature_x = list()
-        feature_y = list()
 
-        for idx, line in enumerate(match_file_data):
-            if idx != 0:
-                row_data = line.split()
-                data = list(float(val) for val in row_data)
-                data = np.array(data)
+        file_data = match_file_data.readlines()
+        for idx in range(1, len(file_data)):
+            line = file_data[idx]
+            row_data = line.split()
+            data = list(float(val) for val in row_data)
+            data = np.array(data)
 
-                num_matches = data[0]
+            num_matches = data[0]
 
-                src_img_x, src_img_y = data[4], data[5]
+            src_img_x, src_img_y = data[4], data[5]
 
-                x_row = np.ones((1, num_images)) * (-1)
-                y_row = np.ones((1, num_images)) * (-1)
+            x_coords = np.ones((1, num_images)) * (-1)
+            y_coords = np.ones((1, num_images)) * (-1)
 
-                x_row[0, i-1] = src_img_x
-                y_row[0, i-1] = src_img_y
+            x_coords[0, i-1] = src_img_x
+            y_coords[0, i-1] = src_img_y
 
-                matching_feature_count = 1
-                while num_matches > 1:
-                    img_id = int(data[5 + matching_feature_count])
-                    img_id_x = data[6 + matching_feature_count]
-                    img_id_y = data[7 + matching_feature_count]
+            matching_feature_count = 1
 
-                    matching_feature_count += 3
+            while num_matches > 1:
+                img_id = int(data[5 + matching_feature_count])
+                img_id_x = data[6 + matching_feature_count]
+                img_id_y = data[7 + matching_feature_count]
+                x_coords[0, img_id - 1] = img_id_x
+                y_coords[0, img_id - 1] = img_id_y
 
-                    num_matches -= 1
+                matching_feature_count += 3
+                num_matches -= 1
 
-                    x_row[0, img_id - 1] = img_id_x
-                    y_row[0, img_id - 1] = img_id_y
+            x_features.append(x_coords)
+            y_features.append(y_coords)
 
-                feature_x.append(x_row)
-                feature_y.append(y_row)
-
-        feature_x = np.array(feature_x).reshape(-1, num_images)
-        feature_y = np.array(feature_y).reshape(-1, num_images)
-
-        x_features.append(feature_x)
-        y_features.append(feature_y)
+    x_features = np.array(x_features).reshape(-1, num_images)
+    y_features = np.array(y_features).reshape(-1, num_images)
 
     return x_features, y_features
 
 
-def get_fundamental_matrices(x_features, y_features, num_images):
+def get_inliers(x_features, y_features, num_images, images, output_dir):
 
-    f_matrix_list = list()
-    inliers_list = list()
-
-    for i in range(0, num_images - 1):
-        x_feat = x_features[i]
-        y_feat = y_features[i]
-
+    inlier_idx_flag = np.zeros_like(x_features)
+    f_matrices = np.zeros((num_images, num_images), dtype=object)
+    f_mat_obj = ir.FundamentalMatrix()
+    # for i in range(0, num_images - 1):
+    for i in range(0, 1):
+        img1 = images[i]
+        h, w = img1.shape[:2]
         for j in range(i + 1, num_images):
+            img2 = images[j]
+            stacked_img = np.hstack((img1, img2))
 
-            img_i_feat_x = list()
-            img_i_feat_y = list()
-            img_j_feat_x = list()
-            img_j_feat_y = list()
+            pt_pair_idx = np.where((x_features[:, i] != -1) & (x_features[:, j] != -1))
+            pts1 = np.hstack((x_features[pt_pair_idx, i].reshape(-1, 1), y_features[pt_pair_idx, i].reshape(-1, 1)))
+            pts2 = np.hstack((x_features[pt_pair_idx, j].reshape(-1, 1), y_features[pt_pair_idx, j].reshape(-1, 1)))
 
-            for idx, x in enumerate(x_feat[:, j]):
-                if x != -1.0:
-                    img_j_feat_x.append(x)
-                    img_j_feat_y.append(y_feat[:, j][idx])
-                    img_i_feat_x.append(x_feat[:, i][idx])
-                    img_i_feat_y.append(y_feat[:, i][idx])
+            if pts1.shape[0] > 8:
+                print('[INFO]: Computing Inliers For Image {0} and Image {1}'.format(i, j))
+                f, inlier_idx = f_mat_obj.get_fundamental_matrix(pts1, pts2, pt_pair_idx)
+                print('[INFO]: Fundamental Matrix for Image {0} and Image {1} \n {2}'.format(i, j, f))
+                f_matrices[i, j] = f
+                inlier_idx_flag[inlier_idx, i] = 1
+                inlier_idx_flag[inlier_idx, j] = 1
 
-            img_i_feat_x = np.array(img_i_feat_x).reshape(-1, 1)
-            img_i_feat_y = np.array(img_i_feat_y).reshape(-1, 1)
-            img_j_feat_x = np.array(img_j_feat_x).reshape(-1, 1)
-            img_j_feat_y = np.array(img_j_feat_y).reshape(-1, 1)
+                p1 = pts1
+                p2 = pts2
+                for pt1, pt2 in zip(p1, p2):
+                    pt2[0] += w
+                    cv2.line(stacked_img, np.int32(pt1), np.int32(pt2), (0, 0, 255), 1, cv2.LINE_AA)
 
-            if img_i_feat_x.shape[0]:
-                pts1 = np.hstack((img_i_feat_x, img_i_feat_y))
-                pts2 = np.hstack((img_j_feat_x, img_j_feat_y))
+                inlier_idx_flag_ = np.int32(inlier_idx_flag)
+                idx = np.where(inlier_idx_flag_[:, i] & inlier_idx_flag_[:, j])
+                img1_pts = np.hstack((x_features[idx, i].reshape(-1, 1), y_features[idx, i].reshape(-1, 1)))
+                img2_pts = np.hstack((x_features[idx, j].reshape(-1, 1), y_features[idx, j].reshape(-1, 1)))
 
-                f_mat_obj = ir.FundamentalMatrix()
-                inliers, f = f_mat_obj.get_fundamental_matrix(pts1, pts2)
+                for pt1, pt2 in zip(img1_pts, img2_pts):
+                    pt2[0] += w
+                    cv2.line(stacked_img, np.int32(pt1), np.int32(pt2), (0, 255, 0), 1, cv2.LINE_AA)
 
-                f_matrix_list.append(f)
-                inliers_list.append(inliers)
+            out_dir = os.path.join(output_dir, "FeatureCorrespondenceOutputForAllImageSet")
+            if not os.path.exists(out_dir):
+                os.makedirs(out_dir)
 
-    return f_matrix_list, inliers_list
+            # cv2.imwrite(os.path.join(out_dir, "img_{0}_{1}_inlier_outlier.png".format(i + 1, j + 1)), stacked_img)
+
+    return f_matrices, inlier_idx_flag
 
 
 def get_essential_matrices(f_matrix_list, K):
@@ -137,7 +140,7 @@ def get_camera_poses(e_matrix_list):
     R_list = list()
     C_list = list()
 
-    for i in range(1):
+    for i in range(len(e_matrix_list)):
         R, C = ep.extract_camera_poses(e_matrix_list[i])
         R_list.append(R)
         C_list.append(C)
@@ -148,9 +151,12 @@ def get_camera_poses(e_matrix_list):
 def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
 
     if linear:
+        print('[INFO]: Started Linear Triangulation')
         pts_3D_list = list()
 
-        for idx in range(1):
+        # import matplotlib.pyplot as plt
+
+        for idx in range(len(R_list)):
             R = R_list[idx]
             C = C_list[idx]
             pts1 = pts_list[idx][0]
@@ -163,6 +169,7 @@ def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
             P1 = np.dot(K, np.dot(R1, np.hstack((I, -C1))))
             pts_3D = list()
 
+            # colors = ['b', 'r', 'o', 'g']
             for i in range(len(C)):
                 p1 = pts1
                 p2 = pts2
@@ -174,16 +181,20 @@ def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
                 p3D = lt.linear_triangulation(P1, P2, p1, p2)
                 p3D = p3D / p3D[:, 3].reshape(-1, 1)
 
+                # color = colors[i]
+                # plt.plot(p3D[:, 0], p3D[:, 2], '.', color)
+
                 pts_3D.append(p3D)
+            # plt.show()
             pts_3D_list.append(pts_3D)
 
         return pts_3D_list
 
     else:
-
+        print('[INFO]: Started Non-Linear Triangulation')
         pts_3D_refined = list()
 
-        for idx in range(1):
+        for idx in range(len(R_list)):
             R2 = R_list[idx]
             C2 = C_list[idx].reshape(-1, 1)
             pts1 = pts_list[idx][0]
@@ -200,15 +211,13 @@ def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
             pt_3D_refined = list()
 
             for i in range(len(pts_3D)):
-                opt = scipy.optimize.least_squares(fun=reprojection_loss, x0=pts_3D[i], method="trf", args=[pts1[i], pts2[i], P1, P2], verbose=2)
+                opt = scipy.optimize.least_squares(fun=reprojection_loss, x0=pts_3D[i], method="trf", args=[pts1[i], pts2[i], P1, P2])
                 pt_3D_refined.append(opt.x)
 
             pts_3D_refined.append(np.array(pt_3D_refined))
 
         return pts_3D_refined
 
-def get_camera_pose(pts_3d, pts_2d, K):
-    C, R = PnPRANSAC(pts_3d, pts_2d, K)
 
 def reprojection_loss(pt_3D, pt_1, pt_2, P1, P2):
 
@@ -226,10 +235,9 @@ def reprojection_loss(pt_3D, pt_1, pt_2, P1, P2):
 
     reprojection_loss = pt_1_reprojection_error + pt_2_reprojection_error
 
-    final_loss = reprojection_loss[0].item()
+    final_loss = reprojection_loss.squeeze()
 
     return final_loss
-
 
 def get_best_R_and_C_and_pts_3D(pts_3D_list, R_list, C_list):
 
@@ -237,7 +245,7 @@ def get_best_R_and_C_and_pts_3D(pts_3D_list, R_list, C_list):
     best_C_list = list()
     best_pts_3D_list = list()
 
-    for idx in range(1):
+    for idx in range(len(pts_3D_list)):
         R = R_list[idx]
         C = C_list[idx]
         pts_3D = pts_3D_list[idx]
@@ -248,7 +256,32 @@ def get_best_R_and_C_and_pts_3D(pts_3D_list, R_list, C_list):
         best_C_list.append(best_C)
         best_pts_3D_list.append(best_pts_3D)
 
+    print("best R", best_R_list)
+    print("best C", best_C_list)
+
     return best_R_list, best_C_list, best_pts_3D_list
+
+
+def get_mean_reprojection_error(K, pts_3D, pts1, pts2, R1, C1, R2, C2):
+
+    I = np.identity(3)
+    if R1 is None:
+        R1 = np.identity(3)
+        C1 = np.zeros((3, 1))
+
+    C1 = C1.reshape(-1, 1)
+    C2 = C2.reshape(-1, 1)
+
+    P1 = np.dot(K, np.dot(R1, np.hstack((I, -C1))))
+    P2 = np.dot(K, np.dot(R2, np.hstack((I, -C2))))
+
+    mean_loss = list()
+
+    for i in range(len(pts_3D)):
+        rep_error = reprojection_loss(pts_3D[i], pts1[i], pts2[i], P1, P2)
+        mean_loss.append(rep_error)
+
+    return np.mean(mean_loss)
 
 
 if __name__ == "__main__":
