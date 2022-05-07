@@ -143,25 +143,25 @@ def run(input_dir, output_dir, num_images):
                 print("[INFO]: Mean Reprojection Error after Bundle Adjustment {}".format(BA_error))
 
     pts_3D_flag[pts_3D_all[:, 2] < 0] = 0
-
-    feature_idx = np.where(pts_3D_flag[:, 0])
-    pts_3D = pts_3D_all[feature_idx]
-    x = pts_3D[:, 0]
-    y = pts_3D[:, 1]
-    z = pts_3D[:, 2]
-
-    # 2D plotting
-    fig = plt.figure(figsize=(10, 10))
-    plt.xlim(-250, 250)
-    plt.ylim(-100, 500)
-    plt.scatter(x, z, marker='.', linewidths=0.5, color='blue')
-    for i in range(0, len(C_set_)):
-        R1 = scipy.spatial.transform.rotation.Rotation.from_matrix(R_set_[i])
-        R1 = np.rad2deg(R1)
-        plt.plot(C_set_[i][0], C_set_[i][2], marker=(3, 0, int(R1[1])), markersize=15, linestyle='None')
-
+    ut.draw_plots(pts_3D_all, pts_3D_flag, R_set_, C_set_)
+    # feature_idx = np.where(pts_3D_flag[:, 0])
+    # pts_3D = pts_3D_all[feature_idx]
+    # x = pts_3D[:, 0]
+    # y = pts_3D[:, 1]
+    # z = pts_3D[:, 2]
+    #
+    # # 2D plotting
+    # fig = plt.figure(figsize=(10, 10))
+    # plt.xlim(-250, 250)
+    # plt.ylim(-100, 500)
+    # plt.scatter(x, z, marker='.', linewidths=0.5, color='blue')
+    # for i in range(0, len(C_set_)):
+    #     R1 = scipy.spatial.transform.rotation.Rotation.from_matrix(R_set_[i]).as_rotvec()
+    #     R1 = np.rad2deg(R1)
+    #     plt.plot(C_set_[i][0], C_set_[i][2], marker=(3, 0, int(R1[1])), markersize=15, linestyle='None')
+    #
     # plt.savefig(savepath + '2D.png')
-    plt.show()
+    # plt.show()
 
 
 if __name__ == "__main__":

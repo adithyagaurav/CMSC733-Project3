@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import scipy.optimize
+import matplotlib.pyplot as plt
 
 import GetInliersRANSAC as ir
 import EssentialMatrixFromFundamentalMatrix as em
@@ -282,6 +283,26 @@ def get_mean_reprojection_error(K, pts_3D, pts1, pts2, R1, C1, R2, C2):
 
     return np.mean(mean_loss)
 
+def draw_plots(pts_3d, pts_3d_flag, Rs, Cs):
+    feature_idx = np.where(pts_3d_flag[:, 0])
+    pts_3d_val = pts_3d[feature_idx]
+    x, y, z = pts_3d_val[:, 0], pts_3d_val[:, 1], pts_3d_val[:, 2]
+
+    # 2D plotting
+    fig = plt.figure(figsize=(10, 10))
+    plt.xlim(-250, 250)
+    plt.ylim(-100, 500)
+    plt.scatter(x, z, marker='.', linewidths=0.5, color='blue')
+    for i in range(0, len(Cs)):
+        R1 = scipy.spatial.transform.rotation.Rotation.from_matrix(Rs[i]).as_rotvec()
+        R1 = np.rad2deg(R1)
+        plt.plot(Cs[i][0], Cs[i][2], marker=(3, 0, int(R1[1])), markersize=15, linestyle='None')
+    plt.show()
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = plt.axes(projection="3d")
+    ax.scatter3D(x, y, z, color='blue')
+    plt.show()
 
 if __name__ == "__main__":
 
