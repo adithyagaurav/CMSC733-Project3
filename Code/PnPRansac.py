@@ -42,10 +42,6 @@ def do_svd(X, Y, K_inv):
     return R, C
 
 
-def homo(pts):
-    return np.hstack((pts, np.ones((pts.shape[0], 1))))
-
-
 def do_reprojection(pts_3d, K, R, C):
     pts_3d_ = np.array(pts_3d).reshape((1,3))
     C_ = C.reshape((3,1))
@@ -60,14 +56,14 @@ def get_error(pt1, pt2):
     return np.sqrt((pt1[0][0]-pt2[0])**2 + (pt1[0][1]-pt2[1])**2)
 
 
-def reprojectionErrorPnP(pts_3D, pts_2D, K, R, C):
+def reprojection_errorPnP(pts_3D, pts_2D, K, R, C):
     I = np.eye(3)
     C = C.reshape(-1, 1)
     P = np.dot(K, np.dot(R, np.hstack((I, -C))))
     error = list()
 
     for pt_3D, pt_2D in zip(pts_3D, pts_2D):
-        p_1T, p_2T, p_3T = P  # rows of P
+        p_1T, p_2T, p_3T = P
         p_1T, p_2T, p_3T = p_1T.reshape(1, -1), p_2T.reshape(1, -1), p_3T.reshape(1, -1)
         X = pt_3D.reshape(1, -1)
         pt_3D_ = np.hstack((X, np.ones((X.shape[0], 1)))).reshape(-1, 1)

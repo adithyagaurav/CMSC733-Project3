@@ -27,10 +27,6 @@ def bundle_adjustment_sparsity(n_cameras, n_points, camera_indices, point_indice
 
 
 def fun(params, n_cameras, n_points, camera_indices, point_indices, points_2d):
-    """Compute residuals.
-
-    `params` contains camera parameters and 3-D coordinates.
-    """
     numcam = n_cameras+1
     camera_params = params[:numcam * 9].reshape((numcam, 9))
     points_3d = params[numcam * 9:].reshape((n_points, 3))
@@ -38,7 +34,6 @@ def fun(params, n_cameras, n_points, camera_indices, point_indices, points_2d):
     return (points_proj - points_2d).ravel()
 
 def project(points, camera_params):
-    """Convert 3-D points to 2-D by projecting onto images."""
     points_proj = rotate(points, camera_params[:, :3])
     points_proj += camera_params[:, 3:6]
     points_proj = -points_proj[:, :2] / points_proj[:, 2, np.newaxis]
@@ -52,10 +47,6 @@ def project(points, camera_params):
 
 
 def rotate(points, rot_vecs):
-    """Rotate points by given rotation vectors.
-
-    Rodrigues' rotation formula is used.
-    """
     theta = np.linalg.norm(rot_vecs, axis=1)[:, np.newaxis]
     with np.errstate(invalid='ignore'):
         v = rot_vecs / theta
@@ -66,8 +57,8 @@ def rotate(points, rot_vecs):
 
     return cos_theta * points + sin_theta * np.cross(v, points) + dot * (1 - cos_theta) * v
 
-def BundleAdjustment(pts_3d,X_found, feature_x, feature_y, filtered_feature_flag, Rs, Cs, K, num_cams):
-    vis_mat, rec_idxs = bvm.get_visibility_matrix(X_found, filtered_feature_flag, num_cams)
+def BundleAdjustment(pts_3d,pts_3D_flag, feature_x, feature_y, filtered_feature_flag, Rs, Cs, K, num_cams):
+    vis_mat, rec_idxs = bvm.get_visibility_matrix(pts_3D_flag, filtered_feature_flag, num_cams)
     rec_pts_2d = bvm.get_img_coords(rec_idxs, vis_mat, feature_x, feature_y)
     rec_pts_3d = pts_3d[rec_idxs]
     cam_idxs, pts_idxs = bvm.get_cam_idxs(vis_mat)

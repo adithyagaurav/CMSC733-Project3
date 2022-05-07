@@ -8,12 +8,7 @@ import NonLinearPnP as nlp
 import LinearTriangulation as lt
 import NonLinearTriangulation as nlt
 import BundleAdjustment as ba
-
-
-def getEuler(R2):
-    from scipy.spatial.transform import Rotation
-    euler = Rotation.from_matrix(R2)
-    return euler.as_rotvec()
+import scipy.spatial.transform.rotation
 
 
 def run(input_dir, output_dir, num_images):
@@ -94,10 +89,10 @@ def run(input_dir, output_dir, num_images):
         pts_2D = np.hstack((x_features[feature_idx_i, i].reshape(-1, 1), y_features[feature_idx_i, i].reshape(-1, 1)))
         pts_3D = pts_3D_all[feature_idx_i, :].reshape(-1, 3)
         R_init, C_init = lpp.PnPRANSAC(K, pts_2D, pts_3D)
-        mean_reproj_error_lpnp = lpp.reprojectionErrorPnP(pts_3D, pts_2D, K, R_init, C_init)
+        mean_reproj_error_lpnp = lpp.reprojection_errorPnP(pts_3D, pts_2D, K, R_init, C_init)
 
         Ri, Ci = nlp.NonLinearPnP(pts_3D, pts_2D, K, R_init, C_init)
-        mean_reproj_error_nlpnp = lpp.reprojectionErrorPnP(pts_3D, pts_2D, K, Ri, Ci)
+        mean_reproj_error_nlpnp = lpp.reprojection_errorPnP(pts_3D, pts_2D, K, Ri, Ci)
         print("[INFO]: Mean Reprojection Error after Linear PnP: ", mean_reproj_error_lpnp)
         print("[INFO]: Mean Reprojection Error after Non-Linear PnP: ", mean_reproj_error_nlpnp)
 
@@ -144,7 +139,7 @@ def run(input_dir, output_dir, num_images):
                 idx_X_pts = np.where(pts_3D_flag[:, 0] & inlier_idx_flag[:, k])
                 x = np.hstack((x_features[idx_X_pts, k].reshape((-1, 1)), y_features[idx_X_pts, k].reshape((-1, 1))))
                 pts_3D = pts_3D_all[idx_X_pts]
-                BA_error = lpp.reprojectionErrorPnP(pts_3D, x, K, R_set_[k], C_set_[k])
+                BA_error = lpp.reprojection_errorPnP(pts_3D, x, K, R_set_[k], C_set_[k])
                 print("[INFO]: Mean Reprojection Error after Bundle Adjustment {}".format(BA_error))
 
     pts_3D_flag[pts_3D_all[:, 2] < 0] = 0
@@ -161,7 +156,7 @@ def run(input_dir, output_dir, num_images):
     plt.ylim(-100, 500)
     plt.scatter(x, z, marker='.', linewidths=0.5, color='blue')
     for i in range(0, len(C_set_)):
-        R1 = getEuler(R_set_[i])
+        R1 = scipy.spatial.transform.rotation.Rotation.from_matrix(R_set_[i])
         R1 = np.rad2deg(R1)
         plt.plot(C_set_[i][0], C_set_[i][2], marker=(3, 0, int(R1[1])), markersize=15, linestyle='None')
 

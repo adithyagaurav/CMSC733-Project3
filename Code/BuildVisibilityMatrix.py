@@ -1,12 +1,12 @@
 import numpy as np
 
 
-def get_visibility_matrix(X_found, valid_feature_idxs, num_cams):
+def get_visibility_matrix(pts_3D_flag, valid_feature_idxs, num_cams):
     recon_bin = np.array([0]*len(valid_feature_idxs))
     for i in range(num_cams+1):
         recon_bin = recon_bin | valid_feature_idxs[:,i]
-    rec_idxs = np.where((X_found.reshape(-1)) & (recon_bin))
-    vis_mat = X_found[rec_idxs].reshape(-1,1)
+    rec_idxs = np.where((pts_3D_flag.reshape(-1)) & (recon_bin))
+    vis_mat = pts_3D_flag[rec_idxs].reshape(-1,1)
     for n in range(num_cams+1):
         vis_mat = np.hstack((vis_mat, valid_feature_idxs[rec_idxs, n].reshape(-1, 1)))
     return vis_mat[:, 1:-1], rec_idxs[0]
