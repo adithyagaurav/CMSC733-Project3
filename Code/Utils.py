@@ -278,7 +278,7 @@ def get_mean_reprojection_error(K, pts_3D, pts1, pts2, R1, C1, R2, C2):
     return np.mean(mean_loss)
 
 
-def draw_plots(pts_3d, pts_3d_flag, Rs, Cs):
+def draw_plots(pts_3d, pts_3d_flag, Rs, Cs, output_dir):
     feature_idx = np.where(pts_3d_flag[:, 0])
     pts_3d_val = pts_3d[feature_idx]
     x, y, z = pts_3d_val[:, 0], pts_3d_val[:, 1], pts_3d_val[:, 2]
@@ -292,12 +292,21 @@ def draw_plots(pts_3d, pts_3d_flag, Rs, Cs):
         R1 = scipy.spatial.transform.rotation.Rotation.from_matrix(Rs[i]).as_rotvec()
         R1 = np.rad2deg(R1)
         plt.plot(Cs[i][0], Cs[i][2], marker=(3, 0, int(R1[1])), markersize=15, linestyle='None')
+
+    out_dir = os.path.join(output_dir, "2D_reconstruction")
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plt.savefig(os.path.join(out_dir, '2D.png'))
     plt.show()
 
     fig = plt.figure(figsize=(10, 10))
     ax = plt.axes(projection="3d")
     ax.scatter3D(x, y, z, color='blue')
     plt.show()
+    out_dir = os.path.join(output_dir, "3D_reconstruction")
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    plt.savefig(os.path.join(out_dir, '3D.png'))
 
 
 if __name__ == "__main__":
