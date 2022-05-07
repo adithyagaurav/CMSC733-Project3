@@ -33,6 +33,7 @@ def fun(params, n_cameras, n_points, camera_indices, point_indices, points_2d):
     points_proj = project(points_3d[point_indices], camera_params[camera_indices])
     return (points_proj - points_2d).ravel()
 
+
 def project(points, camera_params):
     points_proj = rotate(points, camera_params[:, :3])
     points_proj += camera_params[:, 3:6]
@@ -57,6 +58,7 @@ def rotate(points, rot_vecs):
 
     return cos_theta * points + sin_theta * np.cross(v, points) + dot * (1 - cos_theta) * v
 
+
 def BundleAdjustment(pts_3d,pts_3D_flag, feature_x, feature_y, filtered_feature_flag, Rs, Cs, K, num_cams):
     vis_mat, rec_idxs = bvm.get_visibility_matrix(pts_3D_flag, filtered_feature_flag, num_cams)
     rec_pts_2d = bvm.get_img_coords(rec_idxs, vis_mat, feature_x, feature_y)
@@ -73,12 +75,8 @@ def BundleAdjustment(pts_3d,pts_3D_flag, feature_x, feature_y, filtered_feature_
     A = bundle_adjustment_sparsity(num_cams, rec_idxs.shape[0], cam_idxs, pts_idxs)
     x0 = np.hstack((cam_params.ravel(), rec_pts_3d.ravel()))
 
-    t0 = time.time()
     res = least_squares(fun, x0, jac_sparsity=A, verbose=2, x_scale='jac', ftol=1e-10, method='trf',
                         args=(num_cams, rec_pts_3d.shape[0], cam_idxs, pts_idxs, rec_pts_2d))
-    t1 = time.time()
-    print('time to run BA :', t1-t0, 's \nA matrix shape: ' ,  A.shape, '\n############')
-
     params = res.x
     number_of_cam = num_cams + 1
     opt_cam_params = params[:number_of_cam * 9].reshape((number_of_cam, 9))

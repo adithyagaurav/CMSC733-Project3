@@ -92,7 +92,7 @@ def get_inliers(x_features, y_features, num_images, images, output_dir):
             pts2 = np.hstack((x_features[pt_pair_idx, j].reshape(-1, 1), y_features[pt_pair_idx, j].reshape(-1, 1)))
 
             if pts1.shape[0] > 8:
-                print('[INFO]: Computing Inliers For Image {0} and Image {1}'.format(i, j))
+                print('[INFO]: Computing Inliers For Image {0} and Image {1}'.format(i + 1, j + 1))
                 f, inlier_idx = f_mat_obj.get_fundamental_matrix(pts1, pts2, pt_pair_idx)
                 print('[INFO]: Fundamental Matrix for Image {0} and Image {1} \n {2}'.format(i, j, f))
                 f_matrices[i, j] = f
@@ -118,7 +118,7 @@ def get_inliers(x_features, y_features, num_images, images, output_dir):
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
 
-            # cv2.imwrite(os.path.join(out_dir, "img_{0}_{1}_inlier_outlier.png".format(i + 1, j + 1)), stacked_img)
+            cv2.imwrite(os.path.join(out_dir, "img_{0}_{1}_inlier_outlier.png".format(i + 1, j + 1)), stacked_img)
 
     return f_matrices, inlier_idx_flag
 
@@ -154,8 +154,6 @@ def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
         print('[INFO]: Started Linear Triangulation')
         pts_3D_list = list()
 
-        # import matplotlib.pyplot as plt
-
         for idx in range(len(R_list)):
             R = R_list[idx]
             C = C_list[idx]
@@ -169,7 +167,6 @@ def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
             P1 = np.dot(K, np.dot(R1, np.hstack((I, -C1))))
             pts_3D = list()
 
-            # colors = ['b', 'r', 'o', 'g']
             for i in range(len(C)):
                 p1 = pts1
                 p2 = pts2
@@ -181,11 +178,7 @@ def get_pts_3D(K, R_list, C_list, pts_list, linear=True, pts_3D_list=None):
                 p3D = lt.linear_triangulation(P1, P2, p1, p2)
                 p3D = p3D / p3D[:, 3].reshape(-1, 1)
 
-                # color = colors[i]
-                # plt.plot(p3D[:, 0], p3D[:, 2], '.', color)
-
                 pts_3D.append(p3D)
-            # plt.show()
             pts_3D_list.append(pts_3D)
 
         return pts_3D_list
@@ -239,6 +232,7 @@ def reprojection_loss(pt_3D, pt_1, pt_2, P1, P2):
 
     return final_loss
 
+
 def get_best_R_and_C_and_pts_3D(pts_3D_list, R_list, C_list):
 
     best_R_list = list()
@@ -283,6 +277,7 @@ def get_mean_reprojection_error(K, pts_3D, pts1, pts2, R1, C1, R2, C2):
 
     return np.mean(mean_loss)
 
+
 def draw_plots(pts_3d, pts_3d_flag, Rs, Cs):
     feature_idx = np.where(pts_3d_flag[:, 0])
     pts_3d_val = pts_3d[feature_idx]
@@ -303,6 +298,7 @@ def draw_plots(pts_3d, pts_3d_flag, Rs, Cs):
     ax = plt.axes(projection="3d")
     ax.scatter3D(x, y, z, color='blue')
     plt.show()
+
 
 if __name__ == "__main__":
 
